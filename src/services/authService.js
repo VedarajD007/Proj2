@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use environment variable for production, fallback to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/auth';
+// Use environment variable for production, fallback to Railway backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://proj2-production-a169.up.railway.app/api/auth';
 
 // Mock database for standalone deployment (when backend not available)
 const mockUsers = {
