@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use environment variable for production, fallback to Railway backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://proj2-production-a169.up.railway.app/api/auth';
+// Use environment variable for production, fallback to localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/auth';
 
 // Mock database for standalone deployment (when backend not available)
 const mockUsers = {
@@ -10,6 +10,12 @@ const mockUsers = {
     name: 'Demo User',
     email: 'demo@example.com',
     password: 'password123'
+  },
+  'test@test.com': {
+    userId: 'test',
+    name: 'Test User',
+    email: 'test@test.com',
+    password: 'test123'
   }
 };
 
@@ -18,19 +24,31 @@ const authService = {
   register: async (userData) => {
     try {
       // Try real backend first
-      const response = await axios.post(`${API_BASE_URL}/register`, userData, { timeout: 3000 });
+      const response = await axios.post(`${API_BASE_URL}/register`, userData, { timeout: 2000 });
+      if (response.data.success) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('isAuthenticated', 'true');
+      }
       return response.data;
     } catch (error) {
       // Fallback to mock registration
+      console.log('Backend unavailable, using mock registration');
       const { userId, name, email, password, phone } = userData;
       if (!userId || !name || !email || !password) {
-        throw { success: false, message: 'All fields are required' };
+        return { success: false, message: 'All fields are required' };
       }
       if (mockUsers[email]) {
-        throw { success: false, message: 'Email already registered' };
+        return { success: false, message: 'Email already registered' };
       }
-      mockUsers[email] = { userId, name, email, password, phone };
-      return { success: true, message: 'Registration successful' };
+      const newUser = { userId, name, email, password, phone };
+      mockUsers[email] = newUser;
+      
+      // Store user info in localStorage
+      const storeUser = { userId, name, email };
+      localStorage.setItem('user', JSON.stringify(storeUser));
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      return { success: true, message: 'Registration successful', user: storeUser };
     }
   },
 
@@ -41,7 +59,7 @@ const authService = {
       const response = await axios.post(`${API_BASE_URL}/login`, {
         userId,
         password
-      }, { timeout: 3000 });
+      }, { timeout: 2000 });
       
       if (response.data.success) {
         // Store user info
@@ -52,6 +70,7 @@ const authService = {
       return response.data;
     } catch (error) {
       // Fallback to mock login
+      console.log('Backend unavailable, using mock login');
       const user = Object.values(mockUsers).find(u => 
         (u.userId === userId || u.email === userId) && u.password === password
       );
@@ -63,7 +82,7 @@ const authService = {
         return { success: true, user: userData, message: 'Login successful' };
       }
       
-      throw { success: false, message: 'Invalid credentials' };
+      return { success: false, message: 'Invalid credentials' };
     }
   },
 
