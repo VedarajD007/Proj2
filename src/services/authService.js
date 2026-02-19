@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Use environment variable for production, fallback to localhost for development
+// Use environment variable for production Vercel/Railway, fallback to localhost for development
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/auth';
 
 // Mock database for standalone deployment (when backend not available)
