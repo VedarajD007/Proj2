@@ -12,10 +12,15 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests from localhost on any port
-    if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    // Allow requests from localhost (development) and Vercel (production)
+    if (!origin || 
+        origin.startsWith('http://localhost:') || 
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.includes('vercel.app') ||
+        origin.includes('railway.app')) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
