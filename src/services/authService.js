@@ -24,15 +24,15 @@ const authService = {
   register: async (userData) => {
     try {
       // Try real backend first
-      const response = await axios.post(`${API_BASE_URL}/register`, userData, { timeout: 2000 });
+      const response = await axios.post(`${API_BASE_URL}/register`, userData, { timeout: 5000 });
       if (response.data.success) {
         localStorage.setItem('user', JSON.stringify(response.data.user));
         localStorage.setItem('isAuthenticated', 'true');
       }
       return response.data;
     } catch (error) {
-      // Fallback to mock registration
-      console.log('Backend unavailable, using mock registration');
+      console.error('Registration error:', error.message);
+      // Fallback to mock only if backend is unreachable
       const { userId, name, email, password, phone } = userData;
       if (!userId || !name || !email || !password) {
         return { success: false, message: 'All fields are required' };
@@ -43,12 +43,11 @@ const authService = {
       const newUser = { userId, name, email, password, phone };
       mockUsers[email] = newUser;
       
-      // Store user info in localStorage
       const storeUser = { userId, name, email };
       localStorage.setItem('user', JSON.stringify(storeUser));
       localStorage.setItem('isAuthenticated', 'true');
       
-      return { success: true, message: 'Registration successful', user: storeUser };
+      return { success: true, message: 'Registration successful (mock)', user: storeUser };
     }
   },
 
@@ -59,7 +58,7 @@ const authService = {
       const response = await axios.post(`${API_BASE_URL}/login`, {
         userId,
         password
-      }, { timeout: 2000 });
+      }, { timeout: 5000 });
       
       if (response.data.success) {
         // Store user info
@@ -69,8 +68,8 @@ const authService = {
       
       return response.data;
     } catch (error) {
-      // Fallback to mock login
-      console.log('Backend unavailable, using mock login');
+      console.error('Login error:', error.message);
+      // Fallback to mock login only if backend is unreachable
       const user = Object.values(mockUsers).find(u => 
         (u.userId === userId || u.email === userId) && u.password === password
       );
@@ -79,7 +78,7 @@ const authService = {
         const userData = { userId: user.userId, name: user.name, email: user.email };
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
-        return { success: true, user: userData, message: 'Login successful' };
+        return { success: true, user: userData, message: 'Login successful (mock)' };
       }
       
       return { success: false, message: 'Invalid credentials' };
