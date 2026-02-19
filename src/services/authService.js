@@ -3,74 +3,86 @@ import axios from 'axios';
 // Use environment variable for production Vercel/Railway, fallback to localhost for development
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/auth';
 
-// Mock database for standalone deployment (when backend not available)
-const mockUsers = {
-  'demo@example.com': {
-    userId: 'demo',
-    name: 'Demo User',
-    email: 'demo@example.com',
-    password: 'password123'
-  },
-  'test@test.com': {
-    userId: 'test',
-    name: 'Test User',
-    email: 'test@test.com',
-    password: 'test123'
+// Simple localStorage-based user database
+const getStoredUsers = () => {
+  const stored = localStorage.getItem('allUsers');
+  return stored ? JSON.parse(stored) : {};
+};
+
+const saveUsers = (users) => {
+  localStorage.setItem('allUsers', JSON.stringify(users));
+};
+
+// Initialize with some demo users
+const initializeDemoUsers = () => {
+  const users = getStoredUsers();
+  if (Object.keys(users).length === 0) {
+    users['demo@example.com'] = {
+      userId: 'demo',
+      name: 'Demo User',
+      email: 'demo@example.com',
+      password: 'password123'
+    };
+    users['test@test.com'] = {
+      userId: 'test',
+      name: 'Test User',
+      email: 'test@test.com',
+      password: 'test123'
+    };
+    saveUsers(users);
   }
 };
+
+initializeDemoUsers();
 
 const authService = {
   // Register new user
   register: async (userData) => {
     try {
-      // Try real backend first
-      const response = await axios.post(`${API_BASE_URL}/register`, userData, { timeout: 5000 });
-      if (response.data.success) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        localStorage.setItem('isAuthenticated', 'true');
-      }
-      return response.data;
-    } catch (error) {
-      console.error('Registration error:', error.message);
-      // Fallback to mock only if backend is unreachable
       const { userId, name, email, password, phone } = userData;
+      
+      // Validation
       if (!userId || !name || !email || !password) {
         return { success: false, message: 'All fields are required' };
       }
-      if (mockUsers[email]) {
+      
+      const users = getStoredUsers();
+      
+      // Check if email exists
+      if (users[email]) {
         return { success: false, message: 'Email already registered' };
       }
-      const newUser = { userId, name, email, password, phone };
-      mockUsers[email] = newUser;
       
+      // Check if userId exists
+      const userExists = Object.values(users).some(u => u.userId === userId);
+      if (userExists) {
+        return { success: false, message: 'User ID already taken' };
+      }
+      
+      // Create new user
+      const newUser = { userId, name, email, password, phone };
+      users[email] = newUser;
+      saveUsers(users);
+      
+      // Auto login
       const storeUser = { userId, name, email };
       localStorage.setItem('user', JSON.stringify(storeUser));
       localStorage.setItem('isAuthenticated', 'true');
       
-      return { success: true, message: 'Registration successful (mock)', user: storeUser };
+      return { success: true, message: 'Registration successful!', user: storeUser };
+    } catch (error) {
+      console.error('Registration error:', error);
+      return { success: false, message: 'Registration failed: ' + error.message };
     }
   },
 
   // Login user
   login: async (userId, password) => {
     try {
-      // Try real backend first
-      const response = await axios.post(`${API_BASE_URL}/login`, {
-        userId,
-        password
-      }, { timeout: 5000 });
+      const users = getStoredUsers();
       
-      if (response.data.success) {
-        // Store user info
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        localStorage.setItem('isAuthenticated', 'true');
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error('Login error:', error.message);
-      // Fallback to mock login only if backend is unreachable
-      const user = Object.values(mockUsers).find(u => 
+      // Find user by userId or email
+      const user = Object.values(users).find(u => 
         (u.userId === userId || u.email === userId) && u.password === password
       );
       
@@ -78,10 +90,13 @@ const authService = {
         const userData = { userId: user.userId, name: user.name, email: user.email };
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
-        return { success: true, user: userData, message: 'Login successful (mock)' };
+        return { success: true, user: userData, message: 'Login successful!' };
       }
       
       return { success: false, message: 'Invalid credentials' };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, message: 'Login failed: ' + error.message };
     }
   },
 
